@@ -1,0 +1,124 @@
+services:
+  # --- Infrastructure ---
+  mongo:
+    image: mongo:6.0
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - notification-net
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+    networks:
+      - notification-net
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - notification-net
+
+  # --- Microservices ---
+  user-service:
+    build:
+      context: ./packages/user-service
+    container_name: user-service
+    ports:
+      - "3001:3000"
+    environment:
+      PORT: 3000
+      MONGO_URI: mongodb://mongo:27017/user_db
+      JWT_SECRET: YOUR_JWT_SECRET_HERE
+      NODE_ENV: development
+    depends_on:
+      - mongo
+    networks:
+      - notification-net
+
+  template-service:
+    build:
+      context: ./packages/template-service
+    container_name: template-service
+    ports:
+      - "3002:3000"
+    environment:
+      PORT: 3000
+      MONGO_URI: mongodb://mongo:27017/template_db
+      NODE_ENV: development
+    depends_on:
+      - mongo
+    networks:
+      - notification-net
+
+  api-gateway:
+    build:
+      context: ./packages/api-gateway
+    container_name: api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      RABBITMQ_URI: amqp://user:password@rabbitmq:5672
+      REDIS_URI: redis://redis:6379
+      USER_SERVICE_URL: http://user-service:3000
+      TEMPLATE_SERVICE_URL: http://template-service:3000
+      NODE_ENV: development
+    depends_on:
+      - rabbitmq
+      - redis
+      - user-service
+      - template-service
+    networks:
+      - notification-net
+
+  email-service:
+    build:
+      context: ./packages/email-service
+    container_name: email-service
+    environment:
+      RABBITMQ_URI: amqp://user:password@rabbitmq:5672
+      TEMPLATE_SERVICE_URL: http://template-service:3000
+      SMTP_HOST: smtp.mailtrap.io
+      SMTP_PORT: 2525
+      SMTP_USER: your-mailtrap-user
+      SMTP_PASS: your-mailtrap-pass
+      NODE_ENV: development
+    depends_on:
+      - rabbitmq
+      - template-service
+    networks:
+      - notification-net
+
+  push-service:
+    build:
+      context: ./packages/push-service
+    container_name: push-service
+    environment:
+      RABBITMQ_URI: amqp://user:password@rabbitmq:5672
+      TEMPLATE_SERVICE_URL: http://template-service:3000
+      FCM_SERVER_KEY: your-firebase-server-key
+      NODE_ENV: development
+    depends_on:
+      - rabbitmq
+      - template-service
+    networks:
+      - notification-net
+
+networks:
+  notification-net:
+    driver: bridge
+
+volumes:
+  mongo-data:

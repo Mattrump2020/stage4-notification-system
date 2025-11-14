@@ -1,0 +1,24 @@
+{
+  "name": "stage4-notification-system",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "dotenv": "^17.2.3",
+    "eslint": "^9.39.1",
+    "nodemon": "^3.1.10",
+    "prettier": "^3.6.2"
+  },
+  "dependencies": {
+    "amqplib": "^0.10.9",
+    "axios": "^1.13.2",
+    "fcm-node": "^1.6.1",
+    "opossum": "^9.0.0"
+  }
+}
